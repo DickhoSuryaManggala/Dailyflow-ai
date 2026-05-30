@@ -22,28 +22,61 @@ export function getLLMProvider(): LLMProvider {
   return 'gemini';
 }
 
+const placeholderKeyPrefixes = ['MY_', 'REPLACE_ME'];
+const preferredProviderOrder: LLMProvider[] = ['gemini', 'deepseak', 'claude', 'openai'];
+
+function isValidApiKey(value: string | undefined): value is string {
+  return Boolean(value) && !placeholderKeyPrefixes.some(prefix => value.startsWith(prefix));
+}
+
+export function getProviderFallbackOrder(provider: LLMProvider): LLMProvider[] {
+  const startIndex = preferredProviderOrder.indexOf(provider);
+  if (startIndex === -1) return preferredProviderOrder;
+  return [
+    ...preferredProviderOrder.slice(startIndex),
+    ...preferredProviderOrder.slice(0, startIndex),
+  ];
+}
+
+export function getLLMApiKeyForProvider(provider: LLMProvider): string | undefined {
+  const providerKey = provider === 'gemini'
+    ? process.env.GEMINI_API_KEY
+    : provider === 'openai'
+    ? process.env.OPENAI_API_KEY
+    : provider === 'deepseak'
+    ? process.env.DEEPSEAK_API_KEY
+    : provider === 'claude'
+    ? process.env.CLAUDE_API_KEY
+    : undefined;
+
+  if (isValidApiKey(providerKey)) {
+    return providerKey;
+  }
+
+  if (isValidApiKey(process.env.LLM_API_KEY)) {
+    return process.env.LLM_API_KEY;
+  }
+
+  return undefined;
+}
+
 export function getLLMApiKey(): string {
   const provider = getLLMProvider();
-  const key = process.env.LLM_API_KEY || (
-    provider === 'gemini' ? process.env.GEMINI_API_KEY :
-    provider === 'openai' ? process.env.OPENAI_API_KEY :
-    provider === 'deepseak' ? process.env.DEEPSEAK_API_KEY :
-    provider === 'claude' ? process.env.CLAUDE_API_KEY :
-    undefined
-  );
+  const apiKey = getLLMApiKeyForProvider(provider);
 
-  if (!key || key === 'MY_GEMINI_API_KEY' || key === 'MY_OPENAI_API_KEY' || key === 'MY_DEEPSEAK_API_KEY' || key === 'MY_CLAUDE_API_KEY') {
+  if (!apiKey) {
     throw new Error(`${provider.toUpperCase()} API key is not configured in environment variables.`);
   }
 
-  return key as string;
+  return apiKey;
 }
 
-export function getLLMModel(override?: string): string {
+export function getLLMModel(override?: string, provider?: LLMProvider): string {
   if (override) return override;
   if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
 
-  switch (getLLMProvider()) {
+  const targetProvider = provider || getLLMProvider();
+  switch (targetProvider) {
     case 'openai':
       return 'gpt-4o-mini';
     case 'deepseak':
@@ -56,20 +89,39 @@ export function getLLMModel(override?: string): string {
 }
 
 export function isLLMApiConfigured(): boolean {
-  try {
-    getLLMApiKey();
-    return true;
-  } catch {
-    return false;
-  }
+  const provider = getLLMProvider();
+  const providers = getProviderFallbackOrder(provider);
+  return providers.some(p => Boolean(getLLMApiKeyForProvider(p)));
 }
 
 export async function generateLLMText(options: LLMGenerateOptions): Promise<LLMGenerateResult> {
-  const provider = getLLMProvider();
-  const model = getLLMModel(options.model);
+  const requestedProvider = getLLMProvider();
+  const providers = getProviderFallbackOrder(requestedProvider);
+  let lastError: Error | null = null;
 
+  for (const provider of providers) {
+    const apiKey = getLLMApiKeyForProvider(provider);
+    if (!apiKey) continue;
+
+    const model = getLLMModel(options.model, provider);
+    try {
+      return await generateLLMTextWithKey(provider, apiKey, model, options);
+    } catch (err: any) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.warn(`LLM provider ${provider} failed, trying next provider if available:`, lastError.message);
+    }
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+
+  throw new Error(`No configured API keys found for any supported provider.`);
+}
+
+async function generateLLMTextWithKey(provider: LLMProvider, apiKey: string, model: string, options: LLMGenerateOptions): Promise<LLMGenerateResult> {
   if (provider === 'gemini') {
-    return await generateGeminiText({
+    return await generateGeminiText(apiKey, {
       prompt: options.prompt,
       systemInstruction: options.systemInstruction,
       model,
@@ -79,7 +131,7 @@ export async function generateLLMText(options: LLMGenerateOptions): Promise<LLMG
   }
 
   if (provider === 'openai') {
-    return await generateOpenAIText({
+    return await generateOpenAIText(apiKey, {
       prompt: options.prompt,
       systemInstruction: options.systemInstruction,
       model,
@@ -87,7 +139,7 @@ export async function generateLLMText(options: LLMGenerateOptions): Promise<LLMG
   }
 
   if (provider === 'deepseak') {
-    return await generateDeepseakText({
+    return await generateDeepseakText(apiKey, {
       prompt: options.prompt,
       systemInstruction: options.systemInstruction,
       model,
@@ -95,7 +147,7 @@ export async function generateLLMText(options: LLMGenerateOptions): Promise<LLMG
   }
 
   if (provider === 'claude') {
-    return await generateClaudeText({
+    return await generateClaudeText(apiKey, {
       prompt: options.prompt,
       systemInstruction: options.systemInstruction,
       model,
@@ -105,11 +157,11 @@ export async function generateLLMText(options: LLMGenerateOptions): Promise<LLMG
   throw new Error(`Unsupported LLM provider: ${provider}`);
 }
 
-async function generateGeminiText(opts: Pick<LLMGenerateOptions, 'prompt' | 'systemInstruction' | 'model'> & {
+async function generateGeminiText(apiKey: string, opts: Pick<LLMGenerateOptions, 'prompt' | 'systemInstruction' | 'model'> & {
   responseMimeType?: string;
   responseSchema?: any;
 }): Promise<LLMGenerateResult> {
-  const client = new GoogleGenAI({ apiKey: getLLMApiKey() });
+  const client = new GoogleGenAI({ apiKey });
   const response = await client.models.generateContent({
     model: opts.model,
     contents: opts.prompt,
@@ -122,8 +174,7 @@ async function generateGeminiText(opts: Pick<LLMGenerateOptions, 'prompt' | 'sys
   return { text: response.text || '' };
 }
 
-async function generateOpenAIText(opts: Pick<LLMGenerateOptions, 'prompt' | 'systemInstruction' | 'model'>): Promise<LLMGenerateResult> {
-  const apiKey = getLLMApiKey();
+async function generateOpenAIText(apiKey: string, opts: Pick<LLMGenerateOptions, 'prompt' | 'systemInstruction' | 'model'>): Promise<LLMGenerateResult> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -150,8 +201,7 @@ async function generateOpenAIText(opts: Pick<LLMGenerateOptions, 'prompt' | 'sys
   return { text };
 }
 
-async function generateDeepseakText(opts: Pick<LLMGenerateOptions, 'prompt' | 'systemInstruction' | 'model'>): Promise<LLMGenerateResult> {
-  const apiKey = getLLMApiKey();
+async function generateDeepseakText(apiKey: string, opts: Pick<LLMGenerateOptions, 'prompt' | 'systemInstruction' | 'model'>): Promise<LLMGenerateResult> {
   const response = await fetch('https://api.deepseak.ai/v1/completions', {
     method: 'POST',
     headers: {
@@ -176,8 +226,7 @@ async function generateDeepseakText(opts: Pick<LLMGenerateOptions, 'prompt' | 's
   return { text };
 }
 
-async function generateClaudeText(opts: Pick<LLMGenerateOptions, 'prompt' | 'systemInstruction' | 'model'>): Promise<LLMGenerateResult> {
-  const apiKey = getLLMApiKey();
+async function generateClaudeText(apiKey: string, opts: Pick<LLMGenerateOptions, 'prompt' | 'systemInstruction' | 'model'>): Promise<LLMGenerateResult> {
   const prompt = [opts.systemInstruction, opts.prompt].filter(Boolean).join('\n\n');
 
   const response = await fetch('https://api.anthropic.com/v1/complete', {
