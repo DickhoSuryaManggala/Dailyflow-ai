@@ -68,17 +68,3 @@ Proyek menyertakan file `firestore.rules` dan beberapa file konfigurasi Firebase
 
 Isi `.env` dari `.env.example`. Jangan commit file `.env` ke repo.
 
-## Kontribusi
-
-1. Fork repo
-2. Buat branch fitur: `git checkout -b feat/my-feature`
-3. Commit perubahan: `git commit -m "feat: ..."`
-4. Push ke branch Anda dan buat Pull Request
-
-## Lisensi
-
-Proyek ini tidak menyertakan lisensi secara eksplisit. Tambahkan file `LICENSE` jika Anda ingin menetapkan lisensi.
-
-## Kontak
-
-Jika ada pertanyaan, buka issue di repository GitHub.
