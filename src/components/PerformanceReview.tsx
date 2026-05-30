@@ -36,7 +36,7 @@ export default function PerformanceReview({
     try {
       const completionRate = totalTasksCount > 0 ? Math.round((tasksCompletedCount / totalTasksCount) * 100) : 0;
       
-      const response = await fetch("/api/gemini/evaluate-month", {
+      const response = await fetch("/api/llm/evaluate-month", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

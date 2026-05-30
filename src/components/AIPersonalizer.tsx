@@ -317,7 +317,7 @@ export default function AIPersonalizer({ onScheduleGenerated, futureGoals, setFu
     setIsSaved(false);
 
     try {
-      const response = await fetch("/api/gemini/generate-tasks", {
+      const response = await fetch("/api/llm/generate-tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -99,7 +99,7 @@ export default function WeeklyDashboard({
   const handleRequestMotivation = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/gemini/motivation", {
+      const response = await fetch("/api/llm/motivation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -127,7 +127,7 @@ export default function WeeklyDashboard({
   const handleRequestRoast = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/gemini/roast", {
+      const response = await fetch("/api/llm/roast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

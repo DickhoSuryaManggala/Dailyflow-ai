@@ -235,7 +235,7 @@ export default function App() {
         return acc;
       }, { focus: 0, distraction: 0 });
 
-      const response = await fetch("/api/gemini/roast", {
+      const response = await fetch("/api/llm/roast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -588,7 +588,7 @@ export default function App() {
       const sleepTime = localStorage.getItem("ai_profile_sleepTime") || "22:30";
       const activityPref = localStorage.getItem("ai_profile_activityPref") || "Fokus tingkat tinggi, olahraga sore hari";
 
-      const response = await fetch("/api/gemini/generate-tasks", {
+      const response = await fetch("/api/llm/generate-tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
