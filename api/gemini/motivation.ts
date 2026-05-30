@@ -13,15 +13,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { futureGoals, completedTasks, totalTasks, focusMinutes } = req.body || {};
     const client = getGeminiClient();
 
-    const prompt = `Berikan kalimat motivasi personal harian yang ringkas dan hangat. Target: "${futureGoals||'Produktivitas lebih baik'}". Pencapaian: ${completedTasks||0}/${totalTasks||0}. Fokus: ${focusMinutes||0} menit.`;
+    const prompt = `Buat satu kalimat motivasi personal harian yang sangat singkat dan langsung. Jangan lebih dari satu kalimat. Target: "${futureGoals||'Produktivitas lebih baik'}". Pencapaian: ${completedTasks||0}/${totalTasks||0}. Fokus: ${focusMinutes||0} menit.`;
 
     const response = await client.models.generateContent({
       model: 'gemini-3.5-flash',
       contents: prompt,
-      config: { systemInstruction: 'Anda adalah motivator produktivitas berbahasa Indonesia.' }
+      config: { systemInstruction: 'Anda adalah motivator produktivitas bahasa Indonesia yang hanya menulis satu kalimat motivasi singkat dan tegas.' }
     });
 
-    res.status(200).json({ success: true, motivation: response.text || '' });
+    const rawText = response.text || '';
+    const motivationText = rawText.split(/\r?\n/)[0].trim();
+    res.status(200).json({ success: true, motivation: motivationText });
   } catch (err: any) {
     console.error('Motivation Error:', err);
     res.status(500).json({ success: false, error: err.message || 'Motivation generation failed' });

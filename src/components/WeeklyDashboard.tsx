@@ -118,9 +118,7 @@ export default function WeeklyDashboard({
         throw new Error("Motivation content response missing.");
       }
     } catch (err: any) {
-      onUpdateMotivation(
-        `🏆 "${futureGoals}" adalah tujuan besarmu. Setiap pencapaian kecil hari ini mendekatkanmu pada sukses di masa depan. Semangat!`
-      );
+      onUpdateMotivation(`🏆 Tetap fokus, karena setiap langkah kecil hari ini membawa kamu lebih dekat ke tujuan.`);
     } finally {
       setLoading(false);
     }

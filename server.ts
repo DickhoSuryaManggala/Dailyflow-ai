@@ -136,21 +136,19 @@ app.post("/api/gemini/motivation", async (req, res) => {
     
     const client = getGeminiClient();
     
-    const prompt = `Berikan kalimat motivasi personal harian yang mendalam, hangat, dan menginspirasi dalam bahasa Indonesia.
-Target masa depan pengguna: "${futureGoals || "Menjadi pribadi yang lebih produktif"}"
-Pencapaian harian hari ini: menyelesaikan ${completedTasks} dari ${totalTasks} tugas, dengan durasi fokus terukur ${focusMinutes} menit.
-
-Tuliskan sebuah kalimat kutipan/quote motivasi utama yang ringkas (sangat mengena), diikuti dengan 2-3 baris nasihat pendek hangat yang disesuaikan langsung dengan pencapaian tersebut (apakah mencapai target dengan baik atau perlu didorong lebih giat).`;
+    const prompt = `Buat satu kalimat motivasi harian yang sangat singkat dan langsung dalam bahasa Indonesia. Jangan lebih dari satu kalimat. Target: "${futureGoals || "Menjadi pribadi yang lebih produktif"}". Pencapaian: menyelesaikan ${completedTasks} dari ${totalTasks} tugas hari ini. Fokus: ${focusMinutes} menit.`;
 
     const response = await client.models.generateContent({
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
-        systemInstruction: "Anda adalah motivator produktivitas personal yang bersahabat, menggunakan bahasa Indonesia yang ramah, hangat, dan membakar semangat."
+        systemInstruction: "Anda adalah motivator produktivitas personal yang bersahabat dan hanya menulis satu kalimat motivasi singkat." 
       }
     });
 
-    res.json({ success: true, motivation: response.text || "Tetaplah melangkah, setiap langkah kecil mendekatkanmu pada impian masa depan!" });
+    const rawText = response.text || "";
+    const motivationText = rawText.split(/\r?\n/)[0].trim();
+    res.json({ success: true, motivation: motivationText || "Tetaplah melangkah, setiap langkah kecil mendekatkanmu pada impian masa depan!" });
   } catch (error: any) {
     console.error("Gemini Motivation Error:", error);
     res.json({ 
