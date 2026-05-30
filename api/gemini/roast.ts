@@ -27,7 +27,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({ success: true, roast: response.text || '' });
   } catch (err: any) {
-    console.error('Roast Error:', err);
-    res.status(500).json({ success: false, error: err.message || 'Roast generation failed' });
+    const message = err?.message || String(err) || 'Roast generation failed';
+    console.error('Roast Error:', message, err?.stack);
+    const fallbackRoast = `Cita-citamu: "${futureGoals || 'Sukses mulia tanpa usaha'}". Realitas hari ini: ${completedTasks || 0}/${totalTasks || 0} tugas selesai dan fokus ${focusMinutes || 0} menit. Bangkit lagi, jangan berhenti di sini!`;
+    res.status(200).json({ success: true, roast: fallbackRoast, warning: message });
   }
 }
