@@ -1,0 +1,6 @@
+{
+  "name": "DailyFlow AI",
+  "description": "Website jadwal harian cerdas bertenaga AI dengan sinkronisasi Firebase real-time, enkripsi end-to-end, monitor produktivitas offline, evaluasi performa bulanan, dan pengingat otomatis.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

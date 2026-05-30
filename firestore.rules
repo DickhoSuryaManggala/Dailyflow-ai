@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global safety net (Default catch-all deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ======================== GLOBAL PRIMITIVE HELPERS ========================
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(ownerId) {
+      return isSignedIn() && request.auth.uid == ownerId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // ======================== SCHEMA VALIDATIONS ========================
+    
+    function isValidTask(data) {
+      return data.keys().hasAll(['id', 'userId', 'title', 'completed', 'date', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id.size() <= 64
+        && data.userId is string && data.userId == request.auth.uid
+        && data.title is string && data.title.size() <= 300
+        && data.completed is bool
+        && data.date is string && data.date.size() <= 15
+        && data.createdAt is int
+        && data.updatedAt is int;
+    }
+
+    function isValidActivityLog(data) {
+      return data.keys().hasAll(['id', 'userId', 'activityName', 'type', 'durationMinutes', 'timestamp', 'date'])
+        && data.id is string && data.id.size() <= 64
+        && data.userId is string && data.userId == request.auth.uid
+        && data.activityName is string && data.activityName.size() <= 150
+        && data.type is string && (data.type == 'focus' || data.type == 'rest' || data.type == 'distraction')
+        && data.durationMinutes is int
+        && data.timestamp is int
+        && data.date is string && data.date.size() <= 15;
+    }
+
+    function isValidUserSettings(data) {
+      return data.keys().hasAll(['userId', 'futureGoals', 'e2eEnabled', 'emailReportEnabled', 'emailRecipient'])
+        && data.userId is string && data.userId == request.auth.uid
+        && data.futureGoals is string && data.futureGoals.size() <= 500
+        && data.e2eEnabled is bool
+        && data.emailReportEnabled is bool
+        && data.emailRecipient is string;
+    }
+
+    // ======================== COLLECTION MATCH BLOCKS ========================
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(taskId) && isValidTask(request.resource.data);
+      allow update: if isSignedIn() && isValidId(taskId) && isValidTask(request.resource.data) 
+                    && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /activityLogs/{logId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(logId) && isValidActivityLog(request.resource.data);
+      allow update: if isSignedIn() && isValidId(logId) && isValidActivityLog(request.resource.data)
+                    && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /userSettings/{userId} {
+      allow read: if isSignedIn() && isOwner(userId);
+      allow create, update: if isSignedIn() && isOwner(userId) && isValidId(userId) && isValidUserSettings(request.resource.data);
+    }
+
+    match /dailySummaries/{summaryId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update: if isSignedIn() && isValidId(summaryId) && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /monthlyEvaluations/{evalId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update: if isSignedIn() && isValidId(evalId) && request.resource.data.userId == request.auth.uid;
+    }
+  }
+}
