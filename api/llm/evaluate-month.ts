@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateLLMText, getLLMModel } from '../../llm.ts';
+import { generateLLMText, getLLMModel } from './llm.ts';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });

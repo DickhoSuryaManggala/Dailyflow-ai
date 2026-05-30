@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateLLMText, getLLMModel } from '../../llm.ts';
+import { generateLLMText, getLLMModel } from './llm.ts';
 
 function getDayName(selectedDate?: string) {
   if (!selectedDate) return '';

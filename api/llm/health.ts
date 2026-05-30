@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getLLMProvider, isLLMApiConfigured } from '../../llm.ts';
+import { getLLMProvider, isLLMApiConfigured } from './llm.ts';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   res.status(200).json({
